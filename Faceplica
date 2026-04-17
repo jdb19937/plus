@@ -1,0 +1,23 @@
+# Faceplica — aedificatio plus
+
+PREFIX = /opt/apotheca
+
+omnia: plus
+
+plus: plus.o
+	cc -o $@ $^
+
+%.o: %.c
+	cc -o $@ -c $<
+
+colloca: omnia
+	install -d $(PREFIX)/bin
+	install -m 755 plus $(PREFIX)/bin/
+
+purga:
+	rm -f plus plus.o
+
+linte:
+	insinulint -c plus.c
+
+.PHONY: omnia colloca purga linte
