@@ -5,10 +5,10 @@ PREFIX = /opt/apotheca
 omnia: plus
 
 plus: plus.o
-	cc -o $@ $^
+	ldi $^
 
 %.o: %.c
-	cc -o $@ -c $<
+	ccc $^
 
 colloca: omnia
 	install -d $(PREFIX)/bin
