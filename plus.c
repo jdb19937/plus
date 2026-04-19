@@ -17,6 +17,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -600,6 +601,93 @@ static void modus_quaesiti(void)
 }
 
 /* ================================================================
+ * editor — lanciatio externa
+ * ================================================================ */
+
+static void lancia_editorem(void)
+{
+    if (!S.nomen_plicae) {
+        snprintf(
+            S.nuntius, sizeof(S.nuntius),
+            "editor: nullum nomen plicae (ex stdin)"
+        );
+        return;
+    }
+
+    const char *editor = getenv("EDITOR");
+    if (!editor || !*editor)
+        editor = "vi";
+
+    char lineam[32];
+    snprintf(lineam, sizeof(lineam), "+%d", S.positio + 1);
+
+    /* restitue terminalem antequam editor lanciatur */
+    cursor_ostende();
+    alveus_alter_exi();
+    terminalis_restitue();
+
+    /* ignora signa interruptionis dum editor currit */
+    struct sigaction sa_ign, sa_olim_int, sa_olim_term;
+    memset(&sa_ign, 0, sizeof(sa_ign));
+    sa_ign.sa_handler = SIG_IGN;
+    sigemptyset(&sa_ign.sa_mask);
+    sigaction(SIGINT,  &sa_ign, &sa_olim_int);
+    sigaction(SIGTERM, &sa_ign, &sa_olim_term);
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        snprintf(
+            S.nuntius, sizeof(S.nuntius),
+            "fork: %s", strerror(errno)
+        );
+    } else if (pid == 0) {
+        /* in filio: restitue signa pristina */
+        struct sigaction sa_def;
+        memset(&sa_def, 0, sizeof(sa_def));
+        sa_def.sa_handler = SIG_DFL;
+        sigemptyset(&sa_def.sa_mask);
+        sigaction(SIGINT,  &sa_def, NULL);
+        sigaction(SIGTERM, &sa_def, NULL);
+
+        char *args[] = {
+            (char *)editor,
+            lineam,
+            (char *)S.nomen_plicae,
+            NULL
+        };
+        execvp(editor, args);
+        _exit(127);
+    } else {
+        int status;
+        while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+            (void)0;
+    }
+
+    /* redintegra signa */
+    sigaction(SIGINT,  &sa_olim_int,  NULL);
+    sigaction(SIGTERM, &sa_olim_term, NULL);
+
+    /* redintegra statum terminalis */
+    terminalis_crudus();
+    alveus_alter_intra();
+    cursor_cela();
+    dimensio_lege();
+
+    /* relege plicam — potest mutata esse */
+    FILE *fons = fopen(S.nomen_plicae, "r");
+    if (fons) {
+        textus_libera(&S.textus);
+        textus_lege(&S.textus, fons);
+        fclose(fons);
+    } else {
+        snprintf(
+            S.nuntius, sizeof(S.nuntius),
+            "relectio: %s", strerror(errno)
+        );
+    }
+}
+
+/* ================================================================
  * positio — cohibitio liminum
  * ================================================================ */
 
@@ -646,6 +734,7 @@ int main(int argc, char **argv)
             "  /                  quaere\n"
             "  n                  proximum inventum\n"
             "  N                  prius inventum\n"
+            "  v                  lancia editorem ($EDITOR)\n"
             "  q                  exi\n"
         );
         return 0;
@@ -791,6 +880,12 @@ int main(int argc, char **argv)
 
         case 'N':
             quaere_priorem(S.positio - 1);
+            mutatum = 1;
+            break;
+
+        case 'v':
+            lancia_editorem();
+            positio_coerce();
             mutatum = 1;
             break;
         }

@@ -34,6 +34,7 @@ Si textus in una pagina capit, sine paginatione ostenditur. Si stdout non termin
 | `/` | quaere (sine discrimine magnitudinis) |
 | `n` | proximum inventum |
 | `N` | prius inventum |
+| `v` | lancia editorem (`$EDITOR`, alioqui `vi`) ad lineam currentem |
 | `q` | exi |
 
 ## Lineamenta
